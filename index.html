@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Shelter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 3px solid #333;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            background-color: #2d5a27;
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10;
+        }
+        
+        #main-menu {
+            background: rgba(26, 26, 46, 0.9);
+        }
+        
+        #game-over {
+            display: none;
+        }
+        
+        #ending-screen {
+            display: none;
+        }
+        
+        #mode-select {
+            display: none;
+        }
+        
+        #tutorial-screen {
+            display: none;
+        }
+        
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #e74c3c;
+            text-shadow: 0 0 10px rgba(231, 76, 60, 0.7);
+            letter-spacing: 2px;
+        }
+        
+        h2 {
+            font-size: 36px;
+            margin-bottom: 30px;
+            color: #e74c3c;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 200px;
+            text-align: center;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: #2ecc71;
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+        }
+        
+        .btn-warning:hover {
+            background: #d35400;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 18px;
+            z-index: 5;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .bar {
+            width: 200px;
+            height: 20px;
+            background: #555;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        #health-fill {
+            height: 100%;
+            width: 100%;
+            background: #2ecc71;
+            transition: width 0.3s;
+        }
+        
+        #stamina-fill {
+            height: 100%;
+            width: 100%;
+            background: #3498db;
+            transition: width 0.3s;
+        }
+        
+        .settings-group {
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .settings-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        
+        .settings-group select {
+            padding: 8px 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            background: #34495e;
+            color: white;
+            border: 1px solid #3498db;
+        }
+        
+        #stats {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        #ending-stats {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 22px;
+            line-height: 1.6;
+        }
+        
+        #attack-indicator {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 3px solid #e74c3c;
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            z-index: 2;
+        }
+        
+        #wave-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 18px;
+            z-index: 5;
+        }
+        
+        .game-title {
+            font-size: 60px;
+            color: #e74c3c;
+            text-shadow: 0 0 15px rgba(231, 76, 60, 0.8);
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .game-subtitle {
+            font-size: 24px;
+            color: #3498db;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        #boss-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(231, 76, 60, 0.9);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 32px;
+            font-weight: bold;
+            z-index: 20;
+            display: none;
+            text-align: center;
+            animation: pulse 1s infinite;
+        }
+        
+        .ending-title {
+            font-size: 50px;
+            color: #FFD700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .ending-text {
+            font-size: 22px;
+            color: #3498db;
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 90%;
+            line-height: 1.5;
+        }
+        
+        .tutorial-text {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 20px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 25;
+            border: 2px solid #3498db;
+        }
+        
+        .tutorial-highlight {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .tutorial-skip {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #95a5a6;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 25;
+        }
+        
+        .tutorial-skip:hover {
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+        }
+        
+        .mode-description {
+            font-size: 18px;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.4;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        .blood-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(231, 76, 60, 0.7) 0%, rgba(231, 76, 60, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            animation: bloodFade 1s forwards;
+        }
+        
+        @keyframes bloodFade {
+            0% { opacity: 1; transform: scale(0.5); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+        
+        .damage-text {
+            position: absolute;
+            color: #e74c3c;
+            font-size: 18px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 3;
+            animation: floatUp 1s forwards;
+        }
+        
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+        
+        .power-up {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #9b59b6, #8e44ad);
+            animation: pulse 2s infinite;
+            z-index: 2;
+        }
+        
+        .power-up-text {
+            position: absolute;
+            color: #9b59b6;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            width: 100px;
+            left: -35px;
+            top: -25px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        
+        <div id="attack-indicator"></div>
+        <div id="boss-warning">ПРИБЛИЖАЕТСЯ БОСС!</div>
+        
+        <div id="hud">
+            <div>
+                <div>Счёт: <span id="score">0</span></div>
+                <div>Время: <span id="time">0</span>с</div>
+            </div>
+            <div class="bar-container">
+                <div>Жизни:</div>
+                <div class="bar">
+                    <div id="health-fill"></div>
+                </div>
+            </div>
+            <div class="bar-container">
+                <div>Выносливость:</div>
+                <div class="bar">
+                    <div id="stamina-fill"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="wave-info">
+            Волна: <span id="wave">1</span><br>
+            Зомби: <span id="zombies-left">0</span>
+        </div>
+        
+        <div id="main-menu" class="screen">
+            <div class="game-title">ZOMBIE SHELTER</div>
+            <div class="game-subtitle">Выживай как можно дольше!</div>
+            <button id="play-btn" class="btn btn-success">Играть</button>
+            <button id="tutorial-btn" class="btn btn-warning">Обучение</button>
+            <button id="settings-btn" class="btn">Настройки</button>
+            <button id="quit-btn" class="btn btn-danger">Выход</button>
+        </div>
+        
+        <div id="mode-select" class="screen">
+            <h2>Выбор режима</h2>
+            <div class="mode-description">
+                <strong>Обычный режим:</strong> Сражайтесь до 50 волны, чтобы победить и увидеть концовку!
+            </div>
+            <div class="mode-description">
+                <strong>Песочница:</strong> Бесконечные волны зомби - проверьте, как долго вы сможете продержаться!
+            </div>
+            <button id="normal-mode-btn" class="btn btn-success">Обычный режим (50 волн)</button>
+            <button id="sandbox-mode-btn" class="btn btn-warning">Песочница (бесконечно)</button>
+            <button id="back-to-menu-btn" class="btn">Назад</button>
+        </div>
+        
+        <div id="settings-menu" class="screen" style="display: none;">
+            <h2>Настройки</h2>
+            <div class="settings-group">
+                <label for="difficulty">Сложность:</label>
+                <select id="difficulty">
+                    <option value="easy">Легко</option>
+                    <option value="normal" selected>Нормально</option>
+                    <option value="hard">Сложно</option>
+                </select>
+            </div>
+            <div class="settings-group">
+                <label for="medkit-rarity">Редкость аптечек:</label>
+                <select id="medkit-rarity">
+                    <option value="0.001">Очень редко</option>
+                    <option value="0.003" selected>Редко</option>
+                    <option value="0.005">Нормально</option>
+                    <option value="0.01">Часто</option>
+                </select>
+            </div>
+            <div class="settings-group">
+                <label for="coin-rarity">Редкость монет:</label>
+                <select id="coin-rarity">
+                    <option value="10">Часто (10)</option>
+                    <option value="7" selected>Нормально (7)</option>
+                    <option value="5">Редко (5)</option>
+                </select>
+            </div>
+            <button id="back-btn" class="btn">Назад</button>
+        </div>
+        
+        <div id="game-over" class="screen">
+            <h2>ИГРА ОКОНЧЕНА</h2>
+            <div id="stats">
+                <div>Ваш счёт: <span id="final-score">0</span></div>
+                <div>Вы продержались: <span id="survival-time">0</span> секунд</div>
+                <div>Достигнутая волна: <span id="final-wave">1</span></div>
+            </div>
+            <button id="restart-btn" class="btn btn-success">Играть снова</button>
+            <button id="menu-btn" class="btn">Главное меню</button>
+        </div>
+        
+        <div id="ending-screen" class="screen">
+            <div class="ending-title">ПОБЕДА!</div>
+            <div class="ending-text">Вы пережили апокалипсис и спасли человечество!</div>
+            <div id="ending-stats">
+                <div>Финальный счёт: <span id="ending-score">0</span></div>
+                <div>Время выживания: <span id="ending-time">0</span> секунд</div>
+                <div>Пройдено волн: <span id="ending-wave">50</span></div>
+            </div>
+            <div class="ending-text">Спасибо за игру в Zombie Shelter!</div>
+            <button id="ending-restart-btn" class="btn btn-success">Играть снова</button>
+            <button id="ending-menu-btn" class="btn">Главное меню</button>
+        </div>
+        
+        <div id="tutorial-screen" class="screen">
+            <h2>Обучение</h2>
+            <div class="mode-description">
+                Пройдите обучение, чтобы освоить основы игры и стать настоящим охотником на зомби!
+            </div>
+            <button id="start-tutorial-btn" class="btn btn-success">Начать обучение</button>
+            <button id="tutorial-back-btn" class="btn">Назад</button>
+        </div>
+    </div>
+
+    <script>
+        // Получаем элементы
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const timeElement = document.getElementById('time');
+        const waveElement = document.getElementById('wave');
+        const zombiesLeftElement = document.getElementById('zombies-left');
+        const healthFill = document.getElementById('health-fill');
+        const staminaFill = document.getElementById('stamina-fill');
+        const finalScoreElement = document.getElementById('final-score');
+        const survivalTimeElement = document.getElementById('survival-time');
+        const finalWaveElement = document.getElementById('final-wave');
+        const attackIndicator = document.getElementById('attack-indicator');
+        const bossWarning = document.getElementById('boss-warning');
+        
+        // Элементы меню
+        const mainMenu = document.getElementById('main-menu');
+        const settingsMenu = document.getElementById('settings-menu');
+        const gameOverScreen = document.getElementById('game-over');
+        const endingScreen = document.getElementById('ending-screen');
+        const modeSelectScreen = document.getElementById('mode-select');
+        const tutorialScreen = document.getElementById('tutorial-screen');
+        
+        // Кнопки
+        const playBtn = document.getElementById('play-btn');
+        const tutorialBtn = document.getElementById('tutorial-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        const backBtn = document.getElementById('back-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const endingRestartBtn = document.getElementById('ending-restart-btn');
+        const endingMenuBtn = document.getElementById('ending-menu-btn');
+        const normalModeBtn = document.getElementById('normal-mode-btn');
+        const sandboxModeBtn = document.getElementById('sandbox-mode-btn');
+        const backToMenuBtn = document.getElementById('back-to-menu-btn');
+        const startTutorialBtn = document.getElementById('start-tutorial-btn');
+        const tutorialBackBtn = document.getElementById('tutorial-back-btn');
+        
+        // Элементы концовки
+        const endingScoreElement = document.getElementById('ending-score');
+        const endingTimeElement = document.getElementById('ending-time');
+        const endingWaveElement = document.getElementById('ending-wave');
+        
+        // Настройки
+        const difficultySelect = document.getElementById('difficulty');
+        const medkitRaritySelect = document.getElementById('medkit-rarity');
+        const coinRaritySelect = document.getElementById('coin-rarity');
+        
+        // Переменные игры
+        let gameState = 'MENU'; // MENU, MODE_SELECT, PLAY, GAME_OVER, ENDING, TUTORIAL
+        let gameMode = 'normal'; // 'normal', 'sandbox'
+        let score = 0;
+        let gameTime = 0;
+        let timerInterval;
+        let coins = [];
+        let zombies = [];
+        let medkits = [];
+        let bosses = [];
+        let powerUps = [];
+        let player;
+        let keys = {};
+        let mouse = { x: 0, y: 0, down: false };
+        let attackCooldown = 0;
+        let currentWave = 1;
+        let zombiesInWave = 0;
+        let zombiesKilledInWave = 0;
+        let settings = {
+            difficulty: 'normal',
+            medkitRarity: 0.003,
+            coinRarity: 7
+        };
+        const NORMAL_ENDING_WAVE = 50;
+        
+        // Переменные обучения
+        let tutorialStep = 0;
+        let tutorialZombiesKilled = 0;
+        let tutorialMedkitCollected = false;
+        let tutorialBossKilled = false;
+        let tutorialText = "";
+        let tutorialTimeout;
+        
+        // Эффекты
+        let bloodEffects = [];
+        let damageTexts = [];
+        
+        // Создаем спрайт персонажа
+        function createPlayerSprite() {
+            const spriteSheet = document.createElement('canvas');
+            spriteSheet.width = 256;
+            spriteSheet.height = 256;
+            const spriteCtx = spriteSheet.getContext('2d');
+            
+            // Рисуем простого персонажа с анимацией в 4 направлениях
+            // Каждый кадр 64x64 пикселя
+            const directions = ['вниз', 'влево', 'вправо', 'вверх'];
+            
+            for (let dir = 0; dir < 4; dir++) {
+                for (let frame = 0; frame < 4; frame++) {
+                    const x = frame * 64;
+                    const y = dir * 64;
+                    
+                    // Тело персонажа
+                    spriteCtx.fillStyle = '#3498db';
+                    spriteCtx.fillRect(x + 12, y + 10, 40, 50);
+                    
+                    // Голова
+                    spriteCtx.fillStyle = '#ffdbac';
+                    spriteCtx.beginPath();
+                    spriteCtx.arc(x + 32, y + 20, 15, 0, Math.PI * 2);
+                    spriteCtx.fill();
+                    
+                    // Глаза (меняются в зависимости от направления)
+                    spriteCtx.fillStyle = '#000';
+                    if (dir === 0) { // вниз
+                        spriteCtx.fillRect(x + 22, y + 25, 5, 5);
+                        spriteCtx.fillRect(x + 37, y + 25, 5, 5);
+                    } else if (dir === 1) { // влево
+                        spriteCtx.fillRect(x + 22, y + 20, 5, 5);
+                        spriteCtx.fillRect(x + 22, y + 30, 5, 5);
+                    } else if (dir === 2) { // вправо
+                        spriteCtx.fillRect(x + 37, y + 20, 5, 5);
+                        spriteCtx.fillRect(x + 37, y + 30, 5, 5);
+                    } else { // вверх
+                        spriteCtx.fillRect(x + 22, y + 15, 5, 5);
+                        spriteCtx.fillRect(x + 37, y + 15, 5, 5);
+                    }
+                    
+                    // Ноги (анимируются)
+                    spriteCtx.fillStyle = '#2c3e50';
+                    if (frame % 2 === 0) {
+                        spriteCtx.fillRect(x + 17, y + 60, 10, 15);
+                        spriteCtx.fillRect(x + 37, y + 60, 10, 15);
+                    } else {
+                        spriteCtx.fillRect(x + 12, y + 60, 10, 15);
+                        spriteCtx.fillRect(x + 42, y + 60, 10, 15);
+                    }
+                    
+                    // Оружие (меч) в руке
+                    spriteCtx.fillStyle = '#7f8c8d';
+                    if (dir === 1) { // влево - меч слева
+                        spriteCtx.fillRect(x + 5, y + 25, 15, 5);
+                    } else if (dir === 2) { // вправо - меч справа
+                        spriteCtx.fillRect(x + 44, y + 25, 15, 5);
+                    } else { // вверх/вниз - меч справа
+                        spriteCtx.fillRect(x + 44, y + 25, 15, 5);
+                    }
+                }
+            }
+            
+            return spriteSheet;
+        }
+        
+        // Создаем спрайт-лист для монет
+        function createCoinSprite() {
+            const coinSheet = document.createElement('canvas');
+            coinSheet.width = 160;
+            coinSheet.height = 32;
+            const coinCtx = coinSheet.getContext('2d');
+            
+            // Рисуем 5 кадров анимации монеты
+            for (let i = 0; i < 5; i++) {
+                const x = i * 32;
+                
+                coinCtx.fillStyle = '#FFD700';
+                coinCtx.beginPath();
+                coinCtx.arc(x + 16, 16, 12, 0, Math.PI * 2);
+                coinCtx.fill();
+                
+                coinCtx.fillStyle = '#FFA500';
+                coinCtx.beginPath();
+                coinCtx.arc(x + 16, 16, 8, 0, Math.PI * 2);
+                coinCtx.fill();
+            }
+            
+            return coinSheet;
+        }
+        
+        // Создаем спрайт зомби
+        function createZombieSprite() {
+            const zombieSheet = document.createElement('canvas');
+            zombieSheet.width = 256;
+            zombieSheet.height = 256;
+            const zombieCtx = zombieSheet.getContext('2d');
+            
+            // Рисуем зомби с анимацией в 4 направлениях
+            for (let dir = 0; dir < 4; dir++) {
+                for (let frame = 0; frame < 4; frame++) {
+                    const x = frame * 64;
+                    const y = dir * 64;
+                    
+                    // Тело зомби
+                    zombieCtx.fillStyle = '#27ae60';
+                    zombieCtx.fillRect(x + 12, y + 10, 40, 50);
+                    
+                    // Голова зомби
+                    zombieCtx.fillStyle = '#2ecc71';
+                    zombieCtx.beginPath();
+                    zombieCtx.arc(x + 32, y + 20, 15, 0, Math.PI * 2);
+                    zombieCtx.fill();
+                    
+                    // Глаза зомби (красные)
+                    zombieCtx.fillStyle = '#e74c3c';
+                    if (dir === 0) { // вниз
+                        zombieCtx.fillRect(x + 22, y + 25, 5, 5);
+                        zombieCtx.fillRect(x + 37, y + 25, 5, 5);
+                    } else if (dir === 1) { // влево
+                        zombieCtx.fillRect(x + 22, y + 20, 5, 5);
+                        zombieCtx.fillRect(x + 22, y + 30, 5, 5);
+                    } else if (dir === 2) { // вправо
+                        zombieCtx.fillRect(x + 37, y + 20, 5, 5);
+                        zombieCtx.fillRect(x + 37, y + 30, 5, 5);
+                    } else { // вверх
+                        zombieCtx.fillRect(x + 22, y + 15, 5, 5);
+                        zombieCtx.fillRect(x + 37, y + 15, 5, 5);
+                    }
+                    
+                    // Ноги зомби
+                    zombieCtx.fillStyle = '#16a085';
+                    if (frame % 2 === 0) {
+                        zombieCtx.fillRect(x + 17, y + 60, 10, 15);
+                        zombieCtx.fillRect(x + 37, y + 60, 10, 15);
+                    } else {
+                        zombieCtx.fillRect(x + 12, y + 60, 10, 15);
+                        zombieCtx.fillRect(x + 42, y + 60, 10, 15);
+                    }
+                    
+                    // Кровь на зомби
+                    zombieCtx.fillStyle = '#c0392b';
+                    zombieCtx.beginPath();
+                    zombieCtx.arc(x + 20, y + 15, 3, 0, Math.PI * 2);
+                    zombieCtx.fill();
+                    zombieCtx.beginPath();
+                    zombieCtx.arc(x + 40, y + 40, 2, 0, Math.PI * 2);
+                    zombieCtx.fill();
+                }
+            }
+            
+            return zombieSheet;
+        }
+        
+        // Создаем спрайт босса
+        function createBossSprite() {
+            const bossSheet = document.createElement('canvas');
+            bossSheet.width = 256;
+            bossSheet.height = 256;
+            const bossCtx = bossSheet.getContext('2d');
+            
+            // Рисуем босса с анимацией в 4 направлениях
+            for (let dir = 0; dir < 4; dir++) {
+                for (let frame = 0; frame < 4; frame++) {
+                    const x = frame * 64;
+                    const y = dir * 64;
+                    
+                    // Тело босса (больше и темнее)
+                    bossCtx.fillStyle = '#165a32';
+                    bossCtx.fillRect(x + 8, y + 5, 48, 55);
+                    
+                    // Голова босса
+                    bossCtx.fillStyle = '#1e8449';
+                    bossCtx.beginPath();
+                    bossCtx.arc(x + 32, y + 15, 18, 0, Math.PI * 2);
+                    bossCtx.fill();
+                    
+                    // Глаза босса (ярко-красные)
+                    bossCtx.fillStyle = '#ff0000';
+                    if (dir === 0) { // вниз
+                        bossCtx.fillRect(x + 20, y + 20, 6, 6);
+                        bossCtx.fillRect(x + 38, y + 20, 6, 6);
+                    } else if (dir === 1) { // влево
+                        bossCtx.fillRect(x + 20, y + 15, 6, 6);
+                        bossCtx.fillRect(x + 20, y + 25, 6, 6);
+                    } else if (dir === 2) { // вправо
+                        bossCtx.fillRect(x + 38, y + 15, 6, 6);
+                        bossCtx.fillRect(x + 38, y + 25, 6, 6);
+                    } else { // вверх
+                        bossCtx.fillRect(x + 20, y + 10, 6, 6);
+                        bossCtx.fillRect(x + 38, y + 10, 6, 6);
+                    }
+                    
+                    // Ноги босса
+                    bossCtx.fillStyle = '#0e3d20';
+                    if (frame % 2 === 0) {
+                        bossCtx.fillRect(x + 15, y + 60, 12, 20);
+                        bossCtx.fillRect(x + 37, y + 60, 12, 20);
+                    } else {
+                        bossCtx.fillRect(x + 10, y + 60, 12, 20);
+                        bossCtx.fillRect(x + 42, y + 60, 12, 20);
+                    }
+                    
+                    // Кровь на боссе (больше)
+                    bossCtx.fillStyle = '#8b0000';
+                    bossCtx.beginPath();
+                    bossCtx.arc(x + 18, y + 12, 4, 0, Math.PI * 2);
+                    bossCtx.fill();
+                    bossCtx.beginPath();
+                    bossCtx.arc(x + 42, y + 40, 3, 0, Math.PI * 2);
+                    bossCtx.fill();
+                    bossCtx.beginPath();
+                    bossCtx.arc(x + 30, y + 50, 5, 0, Math.PI * 2);
+                    bossCtx.fill();
+                    
+                    // Корона на боссе
+                    bossCtx.fillStyle = '#FFD700';
+                    bossCtx.fillRect(x + 22, y, 20, 8);
+                    bossCtx.fillRect(x + 20, y, 4, 12);
+                    bossCtx.fillRect(x + 28, y, 8, 12);
+                    bossCtx.fillRect(x + 40, y, 4, 12);
+                }
+            }
+            
+            return bossSheet;
+        }
+        
+        // Создаем спрайт аптечки
+        function createMedkitSprite() {
+            const medkitSheet = document.createElement('canvas');
+            medkitSheet.width = 32;
+            medkitSheet.height = 32;
+            const medkitCtx = medkitSheet.getContext('2d');
+            
+            // Красный крест на белом фоне
+            medkitCtx.fillStyle = '#ffffff';
+            medkitCtx.fillRect(0, 0, 32, 32);
+            
+            medkitCtx.fillStyle = '#e74c3c';
+            medkitCtx.fillRect(10, 0, 12, 32); // Вертикальная полоса
+            medkitCtx.fillRect(0, 10, 32, 12); // Горизонтальная полоса
+            
+            return medkitSheet;
+        }
+        
+        // Класс игрока
+        class Player {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.width = 40;
+                this.height = 60;
+                this.walkSpeed = 3;
+                this.runSpeed = 6;
+                this.speed = this.walkSpeed;
+                this.direction = 0; // 0: вниз, 1: влево, 2: вправо, 3: вверх
+                this.frame = 0;
+                this.frameCount = 0;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.stamina = 100;
+                this.maxStamina = 100;
+                this.isRunning = false;
+                this.canRun = true; // Может ли игрок бегать
+                this.spriteSheet = createPlayerSprite();
+                this.attackPower = 25;
+                this.attackRange = 80;
+                this.invulnerable = 0;
+                this.powerUp = null;
+                this.powerUpTime = 0;
+            }
+            
+            update(keys, mouse) {
+                // Определение скорости (ходьба/бег)
+                this.isRunning = false;
+                
+                // Проверяем, может ли игрок бегать (выносливость > 0)
+                this.canRun = this.stamina > 0;
+                
+                if ((keys.Shift || keys.ShiftLeft || keys.ShiftRight) && this.canRun) {
+                    this.speed = this.runSpeed;
+                    this.isRunning = true;
+                    
+                    // Расход выносливости при беге
+                    this.stamina -= 0.8;
+                    if (this.stamina < 0) this.stamina = 0;
+                } else {
+                    this.speed = this.walkSpeed;
+                    
+                    // Восстановление выносливости
+                    if (this.stamina < this.maxStamina) {
+                        this.stamina += 0.3;
+                        if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
+                    }
+                }
+                
+                // Обновление полоски выносливости
+                staminaFill.style.width = (this.stamina / this.maxStamina * 100) + '%';
+                
+                // Движение - исправлено для WASD
+                let moving = false;
+                if (keys.ArrowUp || keys.KeyW) {
+                    this.y -= this.speed;
+                    this.direction = 3;
+                    moving = true;
+                }
+                if (keys.ArrowDown || keys.KeyS) {
+                    this.y += this.speed;
+                    this.direction = 0;
+                    moving = true;
+                }
+                if (keys.ArrowLeft || keys.KeyA) {
+                    this.x -= this.speed;
+                    this.direction = 1;
+                    moving = true;
+                }
+                if (keys.ArrowRight || keys.KeyD) {
+                    this.x += this.speed;
+                    this.direction = 2;
+                    moving = true;
+                }
+                
+                // Границы игрового поля
+                if (this.x < 0) this.x = 0;
+                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+                if (this.y < 0) this.y = 0;
+                if (this.y > canvas.height - this.height) this.y = canvas.height - this.height;
+                
+                // Анимация
+                if (moving) {
+                    this.frameCount++;
+                    let animationSpeed = this.isRunning ? 6 : 8;
+                    if (this.frameCount >= animationSpeed) {
+                        this.frame = (this.frame + 1) % 4;
+                        this.frameCount = 0;
+                    }
+                } else {
+                    this.frame = 0;
+                }
+                
+                // Атака
+                if (mouse.down && attackCooldown <= 0) {
+                    this.attack(mouse.x, mouse.y);
+                    attackCooldown = 20; // Задержка между атаками
+                }
+                
+                // Уменьшение времени неуязвимости
+                if (this.invulnerable > 0) {
+                    this.invulnerable--;
+                }
+                
+                // Уменьшение времени перезарядки атаки
+                if (attackCooldown > 0) {
+                    attackCooldown--;
+                }
+                
+                // Уменьшение времени действия усиления
+                if (this.powerUpTime > 0) {
+                    this.powerUpTime--;
+                    if (this.powerUpTime <= 0) {
+                        this.powerUp = null;
+                    }
+                }
+            }
+            
+            attack(mouseX, mouseY) {
+                // Показать индикатор атаки
+                attackIndicator.style.display = 'block';
+                attackIndicator.style.left = (mouseX - 30) + 'px';
+                attackIndicator.style.top = (mouseY - 30) + 'px';
+                
+                // Скрыть индикатор через короткое время
+                setTimeout(() => {
+                    attackIndicator.style.display = 'none';
+                }, 200);
+                
+                // Увеличение урона при усилении
+                let damage = this.attackPower;
+                if (this.powerUp === 'damage') {
+                    damage *= 1.5;
+                }
+                
+                // Проверить попадание по зомби
+                for (let i = zombies.length - 1; i >= 0; i--) {
+                    const zombie = zombies[i];
+                    const dx = zombie.x + zombie.width/2 - mouseX;
+                    const dy = zombie.y + zombie.height/2 - mouseY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.attackRange) {
+                        zombie.takeDamage(damage);
+                        
+                        // Эффект крови
+                        bloodEffects.push({
+                            x: zombie.x + zombie.width/2,
+                            y: zombie.y + zombie.height/2,
+                            life: 60
+                        });
+                        
+                        // Текст урона
+                        damageTexts.push({
+                            x: zombie.x + zombie.width/2,
+                            y: zombie.y,
+                            text: Math.round(damage),
+                            life: 60
+                        });
+                        
+                        if (zombie.health <= 0) {
+                            zombies.splice(i, 1);
+                            zombiesKilledInWave++;
+                            score += 20;
+                            scoreElement.textContent = score;
+                            updateZombiesLeft();
+                            
+                            // В обучении отслеживаем убийства
+                            if (gameState === 'TUTORIAL') {
+                                tutorialZombiesKilled++;
+                            }
+                        }
+                    }
+                }
+                
+                // Проверить попадание по боссу
+                for (let i = bosses.length - 1; i >= 0; i--) {
+                    const boss = bosses[i];
+                    const dx = boss.x + boss.width/2 - mouseX;
+                    const dy = boss.y + boss.height/2 - mouseY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.attackRange) {
+                        boss.takeDamage(damage);
+                        
+                        // Эффект крови
+                        bloodEffects.push({
+                            x: boss.x + boss.width/2,
+                            y: boss.y + boss.height/2,
+                            life: 60
+                        });
+                        
+                        // Текст урона
+                        damageTexts.push({
+                            x: boss.x + boss.width/2,
+                            y: boss.y,
+                            text: Math.round(damage),
+                            life: 60
+                        });
+                        
+                        if (boss.health <= 0) {
+                            bosses.splice(i, 1);
+                            score += 100;
+                            scoreElement.textContent = score;
+                            updateZombiesLeft();
+                            
+                            // В обучении отслеживаем убийство босса
+                            if (gameState === 'TUTORIAL') {
+                                tutorialBossKilled = true;
+                            }
+                            
+                            // Проверка завершения волны
+                            if (zombies.length === 0 && bosses.length === 0) {
+                                nextWave();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            takeDamage(amount) {
+                if (this.invulnerable <= 0) {
+                    this.health -= amount;
+                    this.invulnerable = 60; // 1 секунда неуязвимости
+                    
+                    // Обновить полоску здоровья
+                    healthFill.style.width = (this.health / this.maxHealth * 100) + '%';
+                    
+                    if (this.health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+            
+            heal(amount) {
+                this.health += amount;
+                if (this.health > this.maxHealth) this.health = this.maxHealth;
+                healthFill.style.width = (this.health / this.maxHealth * 100) + '%';
+            }
+            
+            applyPowerUp(type) {
+                this.powerUp = type;
+                this.powerUpTime = 600; // 10 секунд
+                
+                if (type === 'damage') {
+                    // Уже применено в методе атаки
+                } else if (type === 'speed') {
+                    this.walkSpeed = 4;
+                    this.runSpeed = 8;
+                } else if (type === 'health') {
+                    this.heal(50);
+                }
+            }
+            
+            draw() {
+                const spriteX = this.frame * 64;
+                const spriteY = this.direction * 64;
+                
+                // Мигание при получении урона
+                if (this.invulnerable > 0 && this.invulnerable % 10 < 5) {
+                    ctx.globalAlpha = 0.5;
+                }
+                
+                // Свечение при усилении
+                if (this.powerUp) {
+                    ctx.shadowColor = this.powerUp === 'damage' ? '#e74c3c' : 
+                                     this.powerUp === 'speed' ? '#3498db' : '#2ecc71';
+                    ctx.shadowBlur = 15;
+                }
+                
+                ctx.drawImage(
+                    this.spriteSheet,
+                    spriteX, spriteY, 64, 64,
+                    this.x, this.y, this.width, this.height
+                );
+                
+                ctx.globalAlpha = 1.0;
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Класс зомби
+        class Zombie {
+            constructor(wave, isMinion = false, isFast = false) {
+                this.width = 40;
+                this.height = 60;
+                
+                // Спавн зомби за пределами экрана (если не миньон)
+                if (!isMinion) {
+                    const side = Math.floor(Math.random() * 4);
+                    if (side === 0) { // сверху
+                        this.x = Math.random() * canvas.width;
+                        this.y = -this.height;
+                    } else if (side === 1) { // справа
+                        this.x = canvas.width + this.width;
+                        this.y = Math.random() * canvas.height;
+                    } else if (side === 2) { // снизу
+                        this.x = Math.random() * canvas.width;
+                        this.y = canvas.height + this.height;
+                    } else { // слева
+                        this.x = -this.width;
+                        this.y = Math.random() * canvas.height;
+                    }
+                }
+                
+                // Увеличение характеристик с каждой волной
+                const waveMultiplier = 1 + (wave - 1) * 0.2;
+                
+                this.speed = (settings.difficulty === 'easy' ? 1.5 : 
+                            settings.difficulty === 'normal' ? 2 : 2.5) * waveMultiplier;
+                
+                // Быстрые зомби для обучения
+                if (isFast) {
+                    this.speed *= 1.5;
+                }
+                
+                this.damage = (settings.difficulty === 'easy' ? 5 : 
+                             settings.difficulty === 'normal' ? 10 : 15) * waveMultiplier;
+                this.maxHealth = 80 * waveMultiplier; // Увеличенное здоровье
+                this.health = this.maxHealth;
+                this.direction = 0;
+                this.frame = 0;
+                this.frameCount = 0;
+                this.attackCooldown = 0;
+                this.spriteSheet = createZombieSprite();
+                this.isMinion = isMinion;
+                this.isFast = isFast;
+            }
+            
+            update() {
+                // Движение к игроку
+                const dx = player.x + player.width/2 - (this.x + this.width/2);
+                const dy = player.y + player.height/2 - (this.y + this.height/2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0) {
+                    this.x += (dx / distance) * this.speed;
+                    this.y += (dy / distance) * this.speed;
+                    
+                    // Определение направления
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        this.direction = dx > 0 ? 2 : 1;
+                    } else {
+                        this.direction = dy > 0 ? 0 : 3;
+                    }
+                    
+                    // Анимация
+                    this.frameCount++;
+                    if (this.frameCount >= 10) {
+                        this.frame = (this.frame + 1) % 4;
+                        this.frameCount = 0;
+                    }
+                }
+                
+                // Атака игрока
+                if (distance < 30 && this.attackCooldown <= 0) {
+                    player.takeDamage(this.damage);
+                    this.attackCooldown = 60; // 1 секунда задержки
+                }
+                
+                // Уменьшение времени перезарядки атаки
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown--;
+                }
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+            }
+            
+            draw() {
+                const spriteX = this.frame * 64;
+                const spriteY = this.direction * 64;
+                
+                // Цвет быстрого зомби
+                if (this.isFast) {
+                    ctx.fillStyle = '#f39c12';
+                    ctx.fillRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+                }
+                
+                ctx.drawImage(
+                    this.spriteSheet,
+                    spriteX, spriteY, 64, 64,
+                    this.x, this.y, this.width, this.height
+                );
+                
+                // Полоска здоровья зомби
+                const healthWidth = (this.health / this.maxHealth) * this.width;
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(this.x, this.y - 10, this.width, 5);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(this.x, this.y - 10, healthWidth, 5);
+                
+                // Маркировка миньона
+                if (this.isMinion) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(this.x + this.width/2 - 5, this.y - 15, 10, 3);
+                }
+                
+                // Маркировка быстрого зомби
+                if (this.isFast) {
+                    ctx.fillStyle = '#f39c12';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText('БЫСТРЫЙ', this.x + this.width/2 - 25, this.y - 20);
+                }
+            }
+        }
+        
+        // Класс босса
+        class Boss {
+            constructor(wave) {
+                this.width = 60;
+                this.height = 80;
+                
+                // Спавн босса за пределами экрана
+                const side = Math.floor(Math.random() * 4);
+                if (side === 0) { // сверху
+                    this.x = Math.random() * canvas.width;
+                    this.y = -this.height;
+                } else if (side === 1) { // справа
+                    this.x = canvas.width + this.width;
+                    this.y = Math.random() * canvas.height;
+                } else if (side === 2) { // снизу
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height + this.height;
+                } else { // слева
+                    this.x = -this.width;
+                    this.y = Math.random() * canvas.height;
+                }
+                
+                // Характеристики босса
+                const waveMultiplier = 1 + (wave - 1) * 0.5;
+                
+                this.speed = 1.5 * waveMultiplier;
+                this.damage = 20 * waveMultiplier;
+                this.maxHealth = 500 * waveMultiplier;
+                this.health = this.maxHealth;
+                this.direction = 0;
+                this.frame = 0;
+                this.frameCount = 0;
+                this.attackCooldown = 0;
+                this.spawnCooldown = 0;
+                this.spriteSheet = createBossSprite();
+            }
+            
+            update() {
+                // Движение к игроку
+                const dx = player.x + player.width/2 - (this.x + this.width/2);
+                const dy = player.y + player.height/2 - (this.y + this.height/2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0) {
+                    this.x += (dx / distance) * this.speed;
+                    this.y += (dy / distance) * this.speed;
+                    
+                    // Определение направления
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        this.direction = dx > 0 ? 2 : 1;
+                    } else {
+                        this.direction = dy > 0 ? 0 : 3;
+                    }
+                    
+                    // Анимация
+                    this.frameCount++;
+                    if (this.frameCount >= 15) {
+                        this.frame = (this.frame + 1) % 4;
+                        this.frameCount = 0;
+                    }
+                }
+                
+                // Атака игрока
+                if (distance < 40 && this.attackCooldown <= 0) {
+                    player.takeDamage(this.damage);
+                    this.attackCooldown = 90; // 1.5 секунды задержки
+                }
+                
+                // Призыв зомби-миньонов (только не в обучении)
+                if (this.spawnCooldown <= 0 && gameState !== 'TUTORIAL') {
+                    this.spawnMinions();
+                    this.spawnCooldown = 300; // 5 секунд задержки
+                }
+                
+                // Уменьшение времени перезарядки
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown--;
+                }
+                if (this.spawnCooldown > 0) {
+                    this.spawnCooldown--;
+                }
+            }
+            
+            spawnMinions() {
+                // Создаем двух зомби-миньонов рядом с боссом
+                for (let i = 0; i < 2; i++) {
+                    const minion = new Zombie(currentWave, true);
+                    minion.x = this.x + (i === 0 ? -50 : 50);
+                    minion.y = this.y;
+                    minion.maxHealth = 40; // Меньше здоровья у миньонов
+                    minion.health = minion.maxHealth;
+                    zombies.push(minion);
+                    zombiesInWave += 1;
+                    updateZombiesLeft();
+                }
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+            }
+            
+            draw() {
+                const spriteX = this.frame * 64;
+                const spriteY = this.direction * 64;
+                
+                ctx.drawImage(
+                    this.spriteSheet,
+                    spriteX, spriteY, 64, 64,
+                    this.x, this.y, this.width, this.height
+                );
+                
+                // Полоска здоровья босса
+                const healthWidth = (this.health / this.maxHealth) * this.width;
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(this.x, this.y - 15, this.width, 8);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(this.x, this.y - 15, healthWidth, 8);
+                
+                // Текст "БОСС" над боссом
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText('БОСС', this.x + this.width/2 - 20, this.y - 20);
+            }
+        }
+        
+        // Класс монеты
+        class Coin {
+            constructor() {
+                this.width = 24;
+                this.height = 24;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = Math.random() * (canvas.height - this.height);
+                this.frame = 0;
+                this.frameCount = 0;
+                this.spriteSheet = createCoinSprite();
+            }
+            
+            update() {
+                // Анимация монеты
+                this.frameCount++;
+                if (this.frameCount >= 8) {
+                    this.frame = (this.frame + 1) % 5;
+                    this.frameCount = 0;
+                }
+            }
+            
+            draw() {
+                const spriteX = this.frame * 32;
+                
+                ctx.drawImage(
+                    this.spriteSheet,
+                    spriteX, 0, 32, 32,
+                    this.x, this.y, this.width, this.height
+                );
+            }
+            
+            // Проверка столкновения с игроком
+            checkCollision(player) {
+                return (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                );
+            }
+        }
+        
+        // Класс аптечки
+        class Medkit {
+            constructor() {
+                this.width = 24;
+                this.height = 24;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = Math.random() * (canvas.height - this.height);
+                this.spriteSheet = createMedkitSprite();
+            }
+            
+            draw() {
+                ctx.drawImage(
+                    this.spriteSheet,
+                    0, 0, 32, 32,
+                    this.x, this.y, this.width, this.height
+                );
+            }
+            
+            // Проверка столкновения с игроком
+            checkCollision(player) {
+                return (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                );
+            }
+        }
+        
+        // Класс усиления
+        class PowerUp {
+            constructor(type) {
+                this.width = 30;
+                this.height = 30;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = Math.random() * (canvas.height - this.height);
+                this.type = type; // 'damage', 'speed', 'health'
+                this.life = 600; // 10 секунд
+            }
+            
+            update() {
+                this.life--;
+            }
+            
+            draw() {
+                // Рисуем усиление
+                ctx.fillStyle = this.type === 'damage' ? '#e74c3c' : 
+                               this.type === 'speed' ? '#3498db' : '#2ecc71';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Текст усиления
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    this.type === 'damage' ? 'УРОН' : 
+                    this.type === 'speed' ? 'СКОРОСТЬ' : 'ЗДОРОВЬЕ',
+                    this.x + this.width/2, this.y + this.height/2 + 4
+                );
+                ctx.textAlign = 'left';
+            }
+            
+            // Проверка столкновения с игроком
+            checkCollision(player) {
+                return (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                );
+            }
+        }
+        
+        // Функция обновления счетчика зомби
+        function updateZombiesLeft() {
+            zombiesLeftElement.textContent = zombies.length + bosses.length;
+        }
+        
+        // Функция начала новой волны
+        function nextWave() {
+            // Проверка на достижение концовки в обычном режиме
+            if (gameMode === 'normal' && currentWave >= NORMAL_ENDING_WAVE) {
+                showEnding();
+                return;
+            }
+            
+            currentWave++;
+            waveElement.textContent = currentWave;
+            zombiesKilledInWave = 0;
+            
+            // Показать предупреждение о боссе на каждой 10-й волне (начиная с 10)
+            if (currentWave >= 10 && currentWave % 10 === 0) {
+                bossWarning.style.display = 'block';
+                setTimeout(() => {
+                    bossWarning.style.display = 'none';
+                }, 3000);
+            }
+            
+            // Определяем количество зомби и наличие босса
+            if (currentWave >= 10 && currentWave % 10 === 0) {
+                // Волна с боссом (начиная с 10-й волны)
+                zombiesInWave = 3 + Math.floor(currentWave / 2);
+                bosses = [new Boss(currentWave)];
+            } else {
+                // Обычная волна
+                zombiesInWave = 5 + currentWave * 2;
+                bosses = [];
+            }
+            
+            // Создаем зомби для новой волны
+            zombies = [];
+            for (let i = 0; i < zombiesInWave; i++) {
+                setTimeout(() => {
+                    zombies.push(new Zombie(currentWave));
+                    updateZombiesLeft();
+                }, i * 500); // Постепенное появление зомби
+            }
+            
+            // Случайное появление усиления
+            if (Math.random() < 0.3) {
+                const types = ['damage', 'speed', 'health'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                powerUps.push(new PowerUp(type));
+            }
+            
+            updateZombiesLeft();
+        }
+        
+        // Функция показа концовки
+        function showEnding() {
+            gameState = 'ENDING';
+            clearInterval(timerInterval);
+            
+            // Обновление статистики на экране концовки
+            endingScoreElement.textContent = score;
+            endingTimeElement.textContent = gameTime;
+            endingWaveElement.textContent = currentWave;
+            
+            // Запускаем фейерверк
+            startFireworks();
+            
+            // Показать экран концовки
+            endingScreen.style.display = 'flex';
+        }
+        
+        // Функция фейерверка для концовки
+        function startFireworks() {
+            const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+            
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    createFirework(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        colors[Math.floor(Math.random() * colors.length)]
+                    );
+                }, i * 300);
+            }
+        }
+        
+        function createFirework(x, y, color) {
+            const particles = 50;
+            const particlesArray = [];
+            
+            for (let i = 0; i < particles; i++) {
+                const angle = (Math.PI * 2 / particles) * i;
+                const speed = 2 + Math.random() * 2;
+                
+                particlesArray.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 100,
+                    color: color
+                });
+            }
+            
+            function updateFirework() {
+                for (let i = 0; i < particlesArray.length; i++) {
+                    const p = particlesArray[i];
+                    
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life--;
+                    
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.life / 100;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.globalAlpha = 1.0;
+                
+                if (particlesArray[0].life > 0) {
+                    requestAnimationFrame(updateFirework);
+                }
+            }
+            
+            updateFirework();
+        }
+        
+        // Функция начала игры
+        function startGame() {
+            gameState = 'PLAY';
+            mainMenu.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            endingScreen.style.display = 'none';
+            modeSelectScreen.style.display = 'none';
+            tutorialScreen.style.display = 'none';
+            
+            // Сброс игровых переменных
+            score = 0;
+            gameTime = 0;
+            currentWave = 1;
+            zombiesKilledInWave = 0;
+            scoreElement.textContent = score;
+            timeElement.textContent = gameTime;
+            waveElement.textContent = currentWave;
+            healthFill.style.width = '100%';
+            staminaFill.style.width = '100%';
+            
+            // Создание игрока
+            player = new Player();
+            
+            // Создание монет
+            coins = [];
+            for (let i = 0; i < settings.coinRarity; i++) {
+                coins.push(new Coin());
+            }
+            
+            // Очистка зомби, боссов, аптечек и усилений
+            zombies = [];
+            bosses = [];
+            medkits = [];
+            powerUps = [];
+            bloodEffects = [];
+            damageTexts = [];
+            
+            // Начальная волна
+            zombiesInWave = 5 + currentWave * 2;
+            updateZombiesLeft();
+            
+            for (let i = 0; i < zombiesInWave; i++) {
+                zombies.push(new Zombie(currentWave));
+            }
+            
+            // Запуск таймера
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                gameTime++;
+                timeElement.textContent = gameTime;
+                
+                // Случайное появление аптечки
+                if (Math.random() < settings.medkitRarity && medkits.length < 3) {
+                    medkits.push(new Medkit());
+                }
+            }, 1000);
+            
+            // Запуск игрового цикла
+            gameLoop();
+        }
+        
+        // Функция начала обучения
+        function startTutorial() {
+            gameState = 'TUTORIAL';
+            mainMenu.style.display = 'none';
+            tutorialScreen.style.display = 'none';
+            
+            // Сброс переменных обучения
+            tutorialStep = 0;
+            tutorialZombiesKilled = 0;
+            tutorialMedkitCollected = false;
+            tutorialBossKilled = false;
+            
+            // Сброс игровых переменных
+            score = 0;
+            gameTime = 0;
+            currentWave = 1;
+            scoreElement.textContent = score;
+            timeElement.textContent = gameTime;
+            waveElement.textContent = currentWave;
+            healthFill.style.width = '100%';
+            staminaFill.style.width = '100%';
+            
+            // Создание игрока
+            player = new Player();
+            
+            // Очистка объектов
+            zombies = [];
+            bosses = [];
+            medkits = [];
+            coins = [];
+            powerUps = [];
+            bloodEffects = [];
+            damageTexts = [];
+            
+            // Начало обучения
+            nextTutorialStep();
+            
+            // Запуск игрового цикла
+            gameLoop();
+        }
+        
+        // Функция следующего шага обучения
+        function nextTutorialStep() {
+            tutorialStep++;
+            
+            // Очистка предыдущих объектов
+            zombies = [];
+            bosses = [];
+            medkits = [];
+            coins = [];
+            powerUps = [];
+            
+            // Сброс флагов
+            tutorialZombiesKilled = 0;
+            tutorialMedkitCollected = false;
+            tutorialBossKilled = false;
+            
+            // Установка текста обучения
+            switch(tutorialStep) {
+                case 1:
+                    tutorialText = "Добро пожаловать в обучение! Используйте <span class='tutorial-highlight'>WASD или стрелки</span> для движения.";
+                    // Добавляем монеты для практики
+                    for (let i = 0; i < 3; i++) {
+                        coins.push(new Coin());
+                    }
+                    break;
+                case 2:
+                    tutorialText = "Отлично! Теперь попрактикуйтесь в атаке. <span class='tutorial-highlight'>Кликните левой кнопкой мыши</span>, чтобы атаковать зомби.";
+                    // Добавляем двух медленных зомби
+                    for (let i = 0; i < 2; i++) {
+                        const zombie = new Zombie(1);
+                        zombie.x = 200 + i * 200;
+                        zombie.y = 300;
+                        zombie.speed = 1; // Медленные для обучения
+                        zombies.push(zombie);
+                    }
+                    break;
+                case 3:
+                    tutorialText = "Хорошо! Теперь столкнемся с быстрыми зомби. Удерживайте <span class='tutorial-highlight'>Shift</span> для бега и уворачивайтесь от них!";
+                    // Добавляем двух быстрых зомби
+                    for (let i = 0; i < 2; i++) {
+                        const zombie = new Zombie(1, false, true);
+                        zombie.x = 200 + i * 200;
+                        zombie.y = 300;
+                        zombies.push(zombie);
+                    }
+                    break;
+                case 4:
+                    tutorialText = "Отлично! Теперь обратите внимание на аптечку. Подойдите к ней, чтобы восстановить здоровье.";
+                    // Добавляем аптечку
+                    const medkit = new Medkit();
+                    medkit.x = 400;
+                    medkit.y = 300;
+                    medkits.push(medkit);
+                    break;
+                case 5:
+                    tutorialText = "Отличная работа! Пришло время сразиться с боссом. Атакуйте его, но будьте осторожны - он сильнее обычных зомби!";
+                    // Добавляем босса (упрощенного для обучения)
+                    const boss = new Boss(1);
+                    boss.x = 400;
+                    boss.y = 200;
+                    boss.maxHealth = 200; // Упрощенный босс для обучения
+                    boss.health = boss.maxHealth;
+                    bosses.push(boss);
+                    break;
+                case 6:
+                    tutorialText = "Поздравляем! Вы завершили обучение. Теперь вы готовы к настоящему выживанию!";
+                    // Завершение обучения
+                    setTimeout(() => {
+                        gameState = 'MENU';
+                        mainMenu.style.display = 'flex';
+                    }, 5000);
+                    break;
+            }
+            
+            // Обновление счета зомби
+            updateZombiesLeft();
+        }
+        
+        // Функция завершения игры
+        function gameOver() {
+            gameState = 'GAME_OVER';
+            clearInterval(timerInterval);
+            
+            // Обновление статистики на экране завершения
+            finalScoreElement.textContent = score;
+            survivalTimeElement.textContent = gameTime;
+            finalWaveElement.textContent = currentWave;
+            
+            // Показать экран завершения
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Функция отрисовки текста обучения
+        function drawTutorial() {
+            if (gameState !== 'TUTORIAL') return;
+            
+            // Рисуем полупрозрачный фон для текста
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(50, canvas.height - 120, canvas.width - 100, 80);
+            
+            // Рисуем текст обучения
+            ctx.fillStyle = 'white';
+            ctx.font = '18px Arial';
+            ctx.textAlign = 'center';
+            
+            // Разделяем текст на строки
+            const lines = tutorialText.split('<br>');
+            for (let i = 0; i < lines.length; i++) {
+                // Удаляем HTML теги для простоты
+                const text = lines[i].replace(/<[^>]*>/g, '');
+                ctx.fillText(text, canvas.width / 2, canvas.height - 80 + i * 25);
+            }
+            
+            ctx.textAlign = 'left';
+            
+            // Кнопка пропуска обучения
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(canvas.width - 130, 30, 100, 30);
+            ctx.fillStyle = 'white';
+            ctx.font = '14px Arial';
+            ctx.fillText('Пропустить', canvas.width - 120, 50);
+        }
+        
+        // Игровой цикл
+        function gameLoop() {
+            if (gameState !== 'PLAY' && gameState !== 'TUTORIAL') return;
+            
+            // Очистка канваса
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисуем фон (траву)
+            ctx.fillStyle = '#2d5a27';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисуем узор на траве
+            ctx.fillStyle = '#3d6b2a';
+            for (let i = 0; i < canvas.width; i += 40) {
+                for (let j = 0; j < canvas.height; j += 40) {
+                    if ((i + j) % 80 === 0) {
+                        ctx.fillRect(i, j, 20, 20);
+                    }
+                }
+            }
+            
+            // Обновление и отрисовка эффектов крови
+            for (let i = bloodEffects.length - 1; i >= 0; i--) {
+                const effect = bloodEffects[i];
+                ctx.fillStyle = `rgba(231, 76, 60, ${effect.life / 60})`;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, 30 * (1 - effect.life / 60), 0, Math.PI * 2);
+                ctx.fill();
+                
+                effect.life--;
+                if (effect.life <= 0) {
+                    bloodEffects.splice(i, 1);
+                }
+            }
+            
+            // Обновление и отрисовка текста урона
+            for (let i = damageTexts.length - 1; i >= 0; i--) {
+                const text = damageTexts[i];
+                ctx.fillStyle = `rgba(231, 76, 60, ${text.life / 60})`;
+                ctx.font = 'bold 18px Arial';
+                ctx.fillText(text.text, text.x, text.y);
+                
+                text.y -= 0.5;
+                text.life--;
+                if (text.life <= 0) {
+                    damageTexts.splice(i, 1);
+                }
+            }
+            
+            // Обновление и отрисовка монет
+            for (let i = coins.length - 1; i >= 0; i--) {
+                coins[i].update();
+                coins[i].draw();
+                
+                // Проверка столкновения с игроком
+                if (coins[i].checkCollision(player)) {
+                    coins.splice(i, 1);
+                    score += 10;
+                    scoreElement.textContent = score;
+                    
+                    // Добавляем новую монету (только не в обучении)
+                    if (gameState !== 'TUTORIAL') {
+                        coins.push(new Coin());
+                    }
+                }
+            }
+            
+            // Обновление и отрисовка аптечек
+            for (let i = medkits.length - 1; i >= 0; i--) {
+                medkits[i].draw();
+                
+                // Проверка столкновения с игроком
+                if (medkits[i].checkCollision(player)) {
+                    player.heal(30);
+                    medkits.splice(i, 1);
+                    
+                    // В обучении отслеживаем сбор аптечки
+                    if (gameState === 'TUTORIAL') {
+                        tutorialMedkitCollected = true;
+                    }
+                }
+            }
+            
+            // Обновление и отрисовка усилений
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                powerUps[i].update();
+                powerUps[i].draw();
+                
+                // Проверка столкновения с игроком
+                if (powerUps[i].checkCollision(player)) {
+                    player.applyPowerUp(powerUps[i].type);
+                    powerUps.splice(i, 1);
+                } else if (powerUps[i].life <= 0) {
+                    powerUps.splice(i, 1);
+                }
+            }
+            
+            // Обновление и отрисовка зомби
+            for (let i = 0; i < zombies.length; i++) {
+                zombies[i].update();
+                zombies[i].draw();
+            }
+            
+            // Обновление и отрисовка боссов
+            for (let i = 0; i < bosses.length; i++) {
+                bosses[i].update();
+                bosses[i].draw();
+            }
+            
+            // Обновление и отрисовка игрока
+            player.update(keys, mouse);
+            player.draw();
+            
+            // Логика обучения
+            if (gameState === 'TUTORIAL') {
+                drawTutorial();
+                
+                // Проверка выполнения шага обучения
+                switch(tutorialStep) {
+                    case 1:
+                        // Шаг 1: движение - автоматически переходим через 5 секунд
+                        if (!tutorialTimeout) {
+                            tutorialTimeout = setTimeout(() => {
+                                nextTutorialStep();
+                                tutorialTimeout = null;
+                            }, 5000);
+                        }
+                        break;
+                    case 2:
+                        // Шаг 2: убийство зомби
+                        if (tutorialZombiesKilled >= 2) {
+                            nextTutorialStep();
+                        }
+                        break;
+                    case 3:
+                        // Шаг 3: бег от быстрых зомби - автоматически через 10 секунд
+                        if (!tutorialTimeout) {
+                            tutorialTimeout = setTimeout(() => {
+                                nextTutorialStep();
+                                tutorialTimeout = null;
+                            }, 10000);
+                        }
+                        break;
+                    case 4:
+                        // Шаг 4: сбор аптечки
+                        if (tutorialMedkitCollected) {
+                            nextTutorialStep();
+                        }
+                        break;
+                    case 5:
+                        // Шаг 5: убийство босса
+                        if (tutorialBossKilled) {
+                            nextTutorialStep();
+                        }
+                        break;
+                }
+            } else {
+                // Проверка завершения волны (только в обычной игре)
+                if (zombies.length === 0 && bosses.length === 0) {
+                    nextWave();
+                }
+            }
+            
+            // Запускаем следующий кадр
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Обработка нажатий клавиш - исправлено для WASD
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        // Обработка мыши
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Левая кнопка мыши
+                mouse.down = true;
+                
+                // Проверка клика на кнопку пропуска обучения
+                if (gameState === 'TUTORIAL') {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    if (x >= canvas.width - 130 && x <= canvas.width - 30 && 
+                        y >= 30 && y <= 60) {
+                        gameState = 'MENU';
+                        mainMenu.style.display = 'flex';
+                    }
+                }
+            }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                mouse.down = false;
+            }
+        });
+        
+        // Обработка кнопок меню
+        playBtn.addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            modeSelectScreen.style.display = 'flex';
+        });
+        
+        tutorialBtn.addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            tutorialScreen.style.display = 'flex';
+        });
+        
+        settingsBtn.addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            settingsMenu.style.display = 'flex';
+        });
+        
+        quitBtn.addEventListener('click', () => {
+            if (confirm('Вы уверены, что хотите выйти?')) {
+                window.close();
+            }
+        });
+        
+        backBtn.addEventListener('click', () => {
+            settingsMenu.style.display = 'none';
+            mainMenu.style.display = 'flex';
+            
+            // Сохранение настроек
+            settings.difficulty = difficultySelect.value;
+            settings.medkitRarity = parseFloat(medkitRaritySelect.value);
+            settings.coinRarity = parseInt(coinRaritySelect.value);
+        });
+        
+        restartBtn.addEventListener('click', startGame);
+        
+        menuBtn.addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            mainMenu.style.display = 'flex';
+        });
+        
+        endingRestartBtn.addEventListener('click', startGame);
+        
+        endingMenuBtn.addEventListener('click', () => {
+            endingScreen.style.display = 'none';
+            mainMenu.style.display = 'flex';
+        });
+        
+        normalModeBtn.addEventListener('click', () => {
+            gameMode = 'normal';
+            startGame();
+        });
+        
+        sandboxModeBtn.addEventListener('click', () => {
+            gameMode = 'sandbox';
+            startGame();
+        });
+        
+        backToMenuBtn.addEventListener('click', () => {
+            modeSelectScreen.style.display = 'none';
+            mainMenu.style.display = 'flex';
+        });
+        
+        startTutorialBtn.addEventListener('click', startTutorial);
+        
+        tutorialBackBtn.addEventListener('click', () => {
+            tutorialScreen.style.display = 'none';
+            mainMenu.style.display = 'flex';
+        });
+        
+        // Инициализация игры
+        mainMenu.style.display = 'flex';
+    </script>
+</body>
+</html>
