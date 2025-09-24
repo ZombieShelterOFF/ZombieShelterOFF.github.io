@@ -1,0 +1,405 @@
+import pygame
+import random
+import math
+
+# Инициализация Pygame
+pygame.init()
+
+# Константы
+WIDTH, HEIGHT = 800, 600
+FPS = 60
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 120, 255)
+YELLOW = (255, 255, 0)
+GRAY = (100, 100, 100)
+
+# Создание окна
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Выживание с боссом")
+clock = pygame.time.Clock()
+
+# Шрифты
+font = pygame.font.SysFont('Arial', 24)
+big_font = pygame.font.SysFont('Arial', 36)
+
+class Player:
+    def __init__(self):
+        self.width = 40
+        self.height = 60
+        self.x = WIDTH // 2
+        self.y = HEIGHT // 2
+        self.speed = 5
+        self.slow_speed = 2  # Медленная скорость при усталости
+        self.health = 100
+        self.max_health = 100
+        self.stamina = 100
+        self.max_stamina = 100
+        self.stamina_regen = 0.3  # Восстановление выносливости
+        self.stamina_drain = 0.5  # Расход выносливости при беге
+        self.bullets = []
+        self.bullet_speed = 10
+        self.bullet_damage = 10
+        self.shoot_cooldown = 0
+        self.shoot_delay = 15  # Задержка между выстрелами
+        self.coins = 0
+        self.inventory = {
+            'pistol': False,
+            'medkits': 0
+        }
+        self.color = BLUE
+    
+    def move(self, keys):
+        # Проверяем усталость
+        current_speed = self.slow_speed if self.stamina <= 0 else self.speed
+        
+        # Расход выносливости при движении
+        if (keys[pygame.K_w] or keys[pygame.K_a] or keys[pygame.K_s] or keys[pygame.K_d]) and self.stamina > 0:
+            self.stamina -= self.stamina_drain
+        elif self.stamina < self.max_stamina:
+            self.stamina += self.stamina_regen
+        
+        # Ограничиваем выносливость
+        self.stamina = max(0, min(self.max_stamina, self.stamina))
+        
+        # Движение
+        if keys[pygame.K_w] and self.y > 0:
+            self.y -= current_speed
+        if keys[pygame.K_s] and self.y < HEIGHT - self.height:
+            self.y += current_speed
+        if keys[pygame.K_a] and self.x > 0:
+            self.x -= current_speed
+        if keys[pygame.K_d] and self.x < WIDTH - self.width:
+            self.x += current_speed
+    
+    def shoot(self, target_x, target_y):
+        if self.shoot_cooldown <= 0:
+            # Расчет направления пули
+            dx = target_x - (self.x + self.width // 2)
+            dy = target_y - (self.y + self.height // 2)
+            dist = max(1, math.sqrt(dx * dx + dy * dy))  # Избегаем деления на ноль
+            dx, dy = dx / dist, dy / dist
+            
+            # Увеличение урона при наличии пистолета
+            damage = self.bullet_damage * 3 if self.inventory['pistol'] else self.bullet_damage
+            
+            self.bullets.append({
+                'x': self.x + self.width // 2,
+                'y': self.y + self.height // 2,
+                'dx': dx * self.bullet_speed,
+                'dy': dy * self.bullet_speed,
+                'damage': damage
+            })
+            self.shoot_cooldown = self.shoot_delay
+    
+    def update(self):
+        # Обновление задержки стрельбы
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= 1
+        
+        # Обновление пуль
+        for bullet in self.bullets[:]:
+            bullet['x'] += bullet['dx']
+            bullet['y'] += bullet['dy']
+            
+            # Удаление пуль за пределами экрана
+            if (bullet['x'] < 0 or bullet['x'] > WIDTH or 
+                bullet['y'] < 0 or bullet['y'] > HEIGHT):
+                self.bullets.remove(bullet)
+    
+    def draw(self, screen):
+        # Отрисовка игрока
+        pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+        
+        # Отрисовка пуль
+        for bullet in self.bullets:
+            pygame.draw.circle(screen, YELLOW, (int(bullet['x']), int(bullet['y'])), 5)
+        
+        # Полоска здоровья
+        pygame.draw.rect(screen, RED, (10, 10, 200, 20))
+        pygame.draw.rect(screen, GREEN, (10, 10, 200 * (self.health / self.max_health), 20))
+        
+        # Полоска выносливости
+        pygame.draw.rect(screen, GRAY, (10, 40, 200, 15))
+        stamina_color = BLUE if self.stamina > 20 else RED
+        pygame.draw.rect(screen, stamina_color, (10, 40, 200 * (self.stamina / self.max_stamina), 15))
+        
+        # Отображение статистики
+        health_text = font.render(f'Здоровье: {int(self.health)}/{self.max_health}', True, WHITE)
+        stamina_text = font.render(f'Выносливость: {int(self.stamina)}%', True, WHITE)
+        coins_text = font.render(f'Монеты: {self.coins}', True, YELLOW)
+        
+        screen.blit(health_text, (220, 10))
+        screen.blit(stamina_text, (220, 40))
+        screen.blit(coins_text, (WIDTH - 150, 10))
+        
+        # Отображение инвентаря
+        pistol_status = "Есть" if self.inventory['pistol'] else "Нет"
+        inventory_text = font.render(f'Пистолет: {pistol_status} | Аптечки: {self.inventory["medkits"]}', True, WHITE)
+        screen.blit(inventory_text, (10, HEIGHT - 30))
+    
+    def use_medkit(self):
+        if self.inventory['medkits'] > 0 and self.health < self.max_health:
+            self.health = min(self.max_health, self.health + 40)
+            self.inventory['medkits'] -= 1
+            return True
+        return False
+
+class Boss:
+    def __init__(self):
+        self.width = 80
+        self.height = 80
+        self.x = random.randint(0, WIDTH - self.width)
+        self.y = random.randint(0, HEIGHT - self.height)
+        self.speed = 2.5  # Нормальная скорость босса
+        self.health = 200
+        self.max_health = 200
+        self.attack_cooldown = 0
+        self.attack_delay = 60  # Задержка между атаками
+        self.color = RED
+    
+    def update(self, player_x, player_y):
+        # Движение к игроку
+        dx = player_x - self.x
+        dy = player_y - self.y
+        dist = max(1, math.sqrt(dx * dx + dy * dy))
+        dx, dy = dx / dist, dy / dist
+        
+        self.x += dx * self.speed
+        self.y += dy * self.speed
+        
+        # Ограничение в пределах экрана
+        self.x = max(0, min(WIDTH - self.width, self.x))
+        self.y = max(0, min(HEIGHT - self.height, self.y))
+        
+        # Обновление задержки атаки
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+    
+    def draw(self, screen):
+        # Отрисовка босса
+        pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+        
+        # Полоска здоровья босса
+        pygame.draw.rect(screen, RED, (WIDTH // 2 - 100, 70, 200, 20))
+        pygame.draw.rect(screen, GREEN, (WIDTH // 2 - 100, 70, 200 * (self.health / self.max_health), 20))
+        
+        health_text = font.render(f'Босс: {int(self.health)}/{self.max_health}', True, WHITE)
+        screen.blit(health_text, (WIDTH // 2 - 50, 70))
+
+class Coin:
+    def __init__(self):
+        self.radius = 10
+        self.x = random.randint(self.radius, WIDTH - self.radius)
+        self.y = random.randint(self.radius, HEIGHT - self.radius)
+        self.color = YELLOW
+        self.value = random.randint(1, 5)  # Случайное значение монеты
+    
+    def draw(self, screen):
+        pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
+        # Рисуем "$" на монете
+        text = font.render("$", True, BLACK)
+        screen.blit(text, (self.x - 5, self.y - 8))
+    
+    def check_collision(self, player):
+        # Проверка столкновения с игроком
+        player_center_x = player.x + player.width // 2
+        player_center_y = player.y + player.height // 2
+        
+        distance = math.sqrt((player_center_x - self.x)**2 + (player_center_y - self.y)**2)
+        return distance < (player.width // 2 + self.radius)
+
+class Shop:
+    def __init__(self):
+        self.visible = False
+        self.pistol_price = 500
+        self.medkit_price = 800
+    
+    def draw(self, screen, player):
+        if not self.visible:
+            return
+            
+        # Фон магазина
+        shop_rect = pygame.Rect(WIDTH // 2 - 200, HEIGHT // 2 - 150, 400, 300)
+        pygame.draw.rect(screen, (50, 50, 70), shop_rect)
+        pygame.draw.rect(screen, WHITE, shop_rect, 3)
+        
+        # Заголовок
+        title = big_font.render("МАГАЗИН", True, YELLOW)
+        screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 130))
+        
+        # Информация о монетах
+        coins_text = font.render(f"Ваши монеты: {player.coins}", True, YELLOW)
+        screen.blit(coins_text, (WIDTH // 2 - coins_text.get_width() // 2, HEIGHT // 2 - 90))
+        
+        # Кнопка покупки пистолета
+        pistol_color = GREEN if player.coins >= self.pistol_price and not player.inventory['pistol'] else GRAY
+        pygame.draw.rect(screen, pistol_color, (WIDTH // 2 - 180, HEIGHT // 2 - 50, 360, 50))
+        pistol_text = font.render(f"Купить пистолет (+200% урона) - {self.pistol_price} монет", True, BLACK)
+        screen.blit(pistol_text, (WIDTH // 2 - pistol_text.get_width() // 2, HEIGHT // 2 - 35))
+        
+        # Кнопка покупки аптечки
+        medkit_color = GREEN if player.coins >= self.medkit_price else GRAY
+        pygame.draw.rect(screen, medkit_color, (WIDTH // 2 - 180, HEIGHT // 2 + 10, 360, 50))
+        medkit_text = font.render(f"Купить аптечку (+40 HP) - {self.medkit_price} монет", True, BLACK)
+        screen.blit(medkit_text, (WIDTH // 2 - medkit_text.get_width() // 2, HEIGHT // 2 + 25))
+        
+        # Кнопка выхода
+        pygame.draw.rect(screen, RED, (WIDTH // 2 - 180, HEIGHT // 2 + 70, 360, 50))
+        exit_text = font.render("Закрыть магазин", True, WHITE)
+        screen.blit(exit_text, (WIDTH // 2 - exit_text.get_width() // 2, HEIGHT // 2 + 85))
+    
+    def handle_click(self, pos, player):
+        if not self.visible:
+            return
+            
+        # Проверка клика по кнопкам
+        x, y = pos
+        
+        # Кнопка пистолета
+        if (WIDTH // 2 - 180 <= x <= WIDTH // 2 + 180 and 
+            HEIGHT // 2 - 50 <= y <= HEIGHT // 2 and
+            player.coins >= self.pistol_price and not player.inventory['pistol']):
+            player.coins -= self.pistol_price
+            player.inventory['pistol'] = True
+        
+        # Кнопка аптечки
+        elif (WIDTH // 2 - 180 <= x <= WIDTH // 2 + 180 and 
+              HEIGHT // 2 + 10 <= y <= HEIGHT // 2 + 60 and
+              player.coins >= self.medkit_price):
+            player.coins -= self.medkit_price
+            player.inventory['medkits'] += 1
+        
+        # Кнопка выхода
+        elif (WIDTH // 2 - 180 <= x <= WIDTH // 2 + 180 and 
+              HEIGHT // 2 + 70 <= y <= HEIGHT // 2 + 120):
+            self.visible = False
+
+# Создание объектов игры
+player = Player()
+boss = Boss()
+coins = []
+shop = Shop()
+
+# Таймер для генерации монет
+coin_spawn_timer = 0
+coin_spawn_delay = 90  # Каждые 1.5 секунды при FPS=60
+
+# Главный игровой цикл
+running = True
+game_over = False
+
+while running:
+    # Обработка событий
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        
+        if not game_over:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Левая кнопка мыши
+                    if shop.visible:
+                        shop.handle_click(event.pos, player)
+                    else:
+                        # Стрельба при клике
+                        mouse_x, mouse_y = pygame.mouse.get_pos()
+                        player.shoot(mouse_x, mouse_y)
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    # Использование аптечки
+                    player.use_medkit()
+                elif event.key == pygame.K_m:
+                    # Открытие/закрытие магазина
+                    shop.visible = not shop.visible
+        else:
+            # Перезапуск игры после проигрыша
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                player = Player()
+                boss = Boss()
+                coins = []
+                game_over = False
+    
+    if not game_over and not shop.visible:
+        # Обновление игровых объектов
+        keys = pygame.key.get_pressed()
+        player.move(keys)
+        player.update()
+        
+        # Обновление босса
+        boss.update(player.x + player.width // 2, player.y + player.height // 2)
+        
+        # Проверка столкновения пуль с боссом
+        for bullet in player.bullets[:]:
+            if (bullet['x'] > boss.x and bullet['x'] < boss.x + boss.width and
+                bullet['y'] > boss.y and bullet['y'] < boss.y + boss.height):
+                boss.health -= bullet['damage']
+                player.bullets.remove(bullet)
+                
+                # Проверка победы над боссом
+                if boss.health <= 0:
+                    game_over = True
+        
+        # Проверка столкновения игрока с боссом
+        if (player.x < boss.x + boss.width and player.x + player.width > boss.x and
+            player.y < boss.y + boss.height and player.y + player.height > boss.y):
+            if boss.attack_cooldown <= 0:
+                player.health -= 10
+                boss.attack_cooldown = boss.attack_delay
+                
+                # Проверка проигрыша
+                if player.health <= 0:
+                    game_over = True
+        
+        # Генерация монет
+        coin_spawn_timer += 1
+        if coin_spawn_timer >= coin_spawn_delay:
+            coins.append(Coin())
+            coin_spawn_timer = 0
+        
+        # Проверка сбора монет
+        for coin in coins[:]:
+            if coin.check_collision(player):
+                player.coins += coin.value
+                coins.remove(coin)
+    
+    # Отрисовка
+    screen.fill(BLACK)
+    
+    # Отрисовка монет
+    for coin in coins:
+        coin.draw(screen)
+    
+    # Отрисовка игрока и босса
+    player.draw(screen)
+    boss.draw(screen)
+    
+    # Отрисовка магазина
+    shop.draw(screen, player)
+    
+    # Отрисовка экрана завершения игры
+    if game_over:
+        if player.health <= 0:
+            result_text = "ВЫ ПРОИГРАЛИ!"
+            color = RED
+        else:
+            result_text = "ВЫ ПОБЕДИЛИ!"
+            color = GREEN
+        
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        screen.blit(overlay, (0, 0))
+        
+        text = big_font.render(result_text, True, color)
+        screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - 50))
+        
+        restart_text = font.render("Нажмите R для перезапуска", True, WHITE)
+        screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT // 2 + 20))
+    
+    # Обновление экрана
+    pygame.display.flip()
+    clock.tick(FPS)
+
+pygame.quit()
